@@ -1,5 +1,3 @@
-include sources.mk
-
 #Compiler and Linker
 CC          := cc
 
@@ -17,16 +15,14 @@ SRCEXT      := c
 OBJEXT      := o
 
 #Flags, Libraries and Includes
-CFLAGS      := -Wall -Werror -Wextra
-LIB         := lib
-LIBFT       := libft
-LIBFT.A     := libft.a
+CFLAGS      := -Iphilo/inc -Wall -Werror -Wextra
 DEBUG_FLAGS := -fsanitize=address -g
 
 
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
 #---------------------------------------------------------------------------------
+SOURCES     := philo/src/main.c
 OBJECTS     := $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
 #Default Make
@@ -44,14 +40,10 @@ build:
 #Clean only Objects
 clean:
 	@$(RM) -rf $(OBJDIR)
-	@$(MAKE) -C $(LIB)/$(LIBFT) clean
-	@$(MAKE) -C $(LIB)/$(MLX) clean
 
 #Full Clean, Objects and Binaries
 fclean: clean
 	@$(RM) -rf $(BUILDIR)
-	@$(MAKE) -C $(LIB)/$(LIBFT) fclean
-	@$(MAKE) -C $(LIB)/$(MLX) clean
 
 #Link
 $(TARGETDIR)/$(TARGET) : $(OBJECTS)
