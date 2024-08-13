@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/13 18:28:27 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/13 18:46:20 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,16 +110,26 @@ int	philos_init(t_data *data, char **argv)
 void *routine(void *arg)
 {
 	t_philo *philo;
+	struct timeval tv;
 
-	philo = (t_philo*)arg;
+	philo = (t_philo*)arg;	
+	gettimeofday(&philo->tv, NULL);
 	while (1)
 	{
 		pthread_mutex_lock(philo->left);
 		pthread_mutex_lock(philo->right);
 		printf("eating\n");
+		philo->lunches++;
+		gettimeofday(&tv, NULL);
+		if ((tv.tv_usec - philo->tv.tv_usec) > philo->die)
+			return (NULL);
+		else
+			philo->tv = tv;
 		usleep(philo->eat);
 		pthread_mutex_unlock(philo->left);
 		pthread_mutex_unlock(philo->right);
+		if (philo->lunches == philo->max_lunch)
+			return (NULL);
 		printf("sleeping\n");
 		usleep(philo->sleep);
 		printf("thinking\n");
@@ -159,7 +169,8 @@ int	thread_init_philo(t_data *data, int index)
 	philo->die = data->die;
 	philo->eat = data->eat;
 	philo->sleep = data->sleep;
-	philo->lunches = data->lunches;
+	if (data->lunches > 0)
+		philo->max_lunch = data->lunches;
 	if (index == 0)
 	{
 		philo->left = &data->forks[0];

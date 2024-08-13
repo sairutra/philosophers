@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:15:13 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/13 18:17:44 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/13 18:41:16 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,8 @@ typedef struct s_philo
 	int	eat;
 	int	sleep;
 	int	lunches;
+	int	max_lunch;
+	struct timeval tv;
 }	t_philo;
 
 typedef struct s_data
