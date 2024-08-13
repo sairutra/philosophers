@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/13 16:53:34 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/13 18:28:27 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,14 +51,19 @@ void print_out(char * msg)
 }
 
 
-void free_all(t_philos *data)
+void free_all(t_data *data)
 {
-	free(data->thr);
+	int	index;
+	
+	index = 0;
+	while (index < data->nforks)
+		free(data->philos[index++]);
+	free(data->philos);
 	free(data->forks);
 }
 
 
-int error(t_philos *data, char *msg, int exitcode)
+int error(t_data *data, char *msg, int exitcode)
 {
 	print_err(msg);
 	free_all(data);
@@ -66,7 +71,7 @@ int error(t_philos *data, char *msg, int exitcode)
 }
 
 
-int	philos_init_var(t_philos *data, int* data_var, char *var, char *err_msg)
+int	philos_init_var(t_data *data, int* data_var, char *var, char *err_msg)
 {
 	*data_var = philo_atoi(var);
 	if (*data_var == -1)
@@ -74,9 +79,9 @@ int	philos_init_var(t_philos *data, int* data_var, char *var, char *err_msg)
 	return (0);
 }
 
-int	philos_init(t_philos *data, char **argv)
+int	philos_init(t_data *data, char **argv)
 {
-	memset(data, 0, sizeof(t_philos));
+	memset(data, 0, sizeof(t_data));
 	if (philos_init_var(data, &data->nphilos, argv[1], "number of philos wrong\n"))
 		return (1);
 	data->nforks = data->nphilos;
@@ -104,35 +109,26 @@ int	philos_init(t_philos *data, char **argv)
 
 void *routine(void *arg)
 {
-	(void)arg;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	printf("%ld\n", tv.tv_sec);
+	t_philo *philo;
+
+	philo = (t_philo*)arg;
+	while (1)
+	{
+		pthread_mutex_lock(philo->left);
+		pthread_mutex_lock(philo->right);
+		printf("eating\n");
+		usleep(philo->eat);
+		pthread_mutex_unlock(philo->left);
+		pthread_mutex_unlock(philo->right);
+		printf("sleeping\n");
+		usleep(philo->sleep);
+		printf("thinking\n");
+	}
 	return (NULL);
 }
 
 
-int thread_init(t_philos *data)
-{
-	int	index;
-	int	size;
-
-	size = data->nphilos * sizeof(pthread_t);
-	index = 0;
-	data->thr = malloc(size);
-	memset(data->thr, 0, size);
-	if (data->thr == NULL)
-		return (error(data, "threads malloc error", 1));
-	while (index < data->nphilos)
-	{
-		if (pthread_create(&data->thr[index], NULL, &routine, NULL) != 0)
-			return (error(data, "phtread create error\n", 1));
-		index++;
-	}
-	return (0);
-}
-
-int	mutex_init(t_philos *data)
+int	mutex_init(t_data *data)
 {
 	int	index;
 	int	size;
@@ -152,14 +148,62 @@ int	mutex_init(t_philos *data)
 	return (0);
 }
 
-int wait_threads(t_philos *data)
+int	thread_init_philo(t_data *data, int index)
+{
+	t_philo *philo;
+	philo = malloc(sizeof(t_philo));
+	memset(philo, 0, sizeof(t_philo));
+	if (philo == NULL)
+		return (error(data, "threads malloc error", 1));
+
+	philo->die = data->die;
+	philo->eat = data->eat;
+	philo->sleep = data->sleep;
+	philo->lunches = data->lunches;
+	if (index == 0)
+	{
+		philo->left = &data->forks[0];
+		philo->right = &data->forks[data->nforks - 1];
+	}
+	else
+	{
+		philo->left = &data->forks[index];
+		philo->right = &data->forks[index - 1];
+	}
+	data->philos[index] = philo;
+	if (pthread_create(&data->philos[index]->thread, NULL, &routine, (void *)data->philos[index]) != 0)
+		return (error(data, "phtread create error\n", 1));
+	return (0);
+}
+
+int thread_init(t_data *data)
+{
+	int	index;
+	int	size;
+
+	size = data->nphilos * sizeof(t_philo**);
+	index = 0;
+	data->philos = malloc(size);
+	memset(data->philos, 0, size);
+	if (data->philos == NULL)
+		return (error(data, "threads malloc error", 1));
+	while (index < data->nphilos)
+	{
+		if (thread_init_philo(data, index))
+			return (1);
+		index++;
+	}
+	return (0);
+}
+
+int wait_threads(t_data *data)
 {
 	int	index;
 
 	index = 0;
 	while (index < data->nphilos)
 	{
-		if (pthread_join(data->thr[index], NULL) != 0)
+		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));
 		index++;
 	}
@@ -176,7 +220,7 @@ int wait_threads(t_philos *data)
 
 int main(int argc, char **argv)
 {
-	t_philos data;
+	t_data data;
 
 	if (argc < 5 || argc > 6)
 		return (error(&data, "wrong amount of arguments\n", 1));
