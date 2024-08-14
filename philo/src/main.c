@@ -6,12 +6,13 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/14 13:18:57 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/14 17:01:55 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <philo.h>
 
+// check for overflow
 int	philo_atoi(char *arg)
 {
 	int	result;
@@ -118,8 +119,6 @@ int	philos_init(t_data *data, char **argv)
 	return (0);
 }
 
-
-
 int	mutex_init(t_data *data)
 {
 	int	index;
@@ -137,42 +136,49 @@ int	mutex_init(t_data *data)
 			return (error(data, "mutex init error\n", 1));
 		index++;
 	}
+	if (pthread_mutex_init(&data->endmutex, NULL) != 0)
+		return (error(data, "mutex init end error\n", 1));
 	return (0);
+}
+
+long long timestamp(void)
+{
+	long long ret;
+	struct timeval stamp;
+
+	gettimeofday(&stamp, NULL);
+	ret = (stamp.tv_sec * 1000) + (stamp.tv_usec / 1000);
+	return (ret);
 }
 
 void routine_print(t_philo *philo, int status)
 {
-	struct timeval tv;
-
+	pthread_mutex_lock(&philo->main->endmutex);
 	philo->status = status;
-	gettimeofday(&tv, NULL);
-	if (status == eating && !philo->main->end)
+	if (status == eating && philo->main->end == 0)
 	{
-		printf("%ld %d is eating\n", tv.tv_usec, philo->num);
-		usleep(philo->main->eat);
+		philo->tv = timestamp();
+		printf("%lld %d is eating\n", (philo->tv - philo->main->start), philo->num);
 		philo->lunches++;
 		if (philo->lunches == philo->max_lunch)
 			philo->status = finished;
 	}
-	if (status == thinking && !philo->main->end)
-		printf("%ld %d is thinking\n", tv.tv_usec, philo->num);
-	if (status == sleeping && !philo->main->end)
-	{
-		printf("%ld %d is sleeping\n", tv.tv_usec, philo->num);
-		usleep(philo->main->sleep);
-	}
+	if (status == idle && philo->main->end == 0)
+		printf("%lld %d has taken a fork\n", (timestamp() - philo->main->start), philo->num);
+	if (status == thinking && philo->main->end == 0)
+		printf("%lld %d is thinking\n", (timestamp() - philo->main->start), philo->num);
+	if (status == sleeping && philo->main->end == 0)
+		printf("%lld %d is sleeping\n", (timestamp() - philo->main->start), philo->num);
+	pthread_mutex_unlock(&philo->main->endmutex);
 }
 
+// check if only one philo is there
 void routine_lock(t_philo *philo)
 {
-	struct timeval tv;
-
 	pthread_mutex_lock(philo->left);
-	gettimeofday(&tv, NULL);
-	printf("%ld %d has taken a fork\n", tv.tv_usec, philo->num);
+	routine_print(philo, idle);
 	pthread_mutex_lock(philo->right);
-	gettimeofday(&tv, NULL);
-	printf("%ld %d has taken a fork\n", tv.tv_usec, philo->num);
+	routine_print(philo, idle);
 }
 
 void routine_unlock(t_philo *philo)
@@ -181,29 +187,43 @@ void routine_unlock(t_philo *philo)
 	pthread_mutex_unlock(philo->right);
 }
 
+void routine_death_check(t_philo *philo)
+{
+	long long time;
+
+	pthread_mutex_lock(&philo->main->endmutex);
+	time = timestamp();
+	if (philo->main->end)
+		philo->status = death;
+	if ((time - philo->tv) > philo->main->die)
+	{
+		philo->main->end = 1;
+		philo->status = death;
+	}
+	else
+		philo->tv = time;
+	pthread_mutex_unlock(&philo->main->endmutex);
+}
+
 void *routine(void *arg)
 {
 	t_philo *philo;
-	struct timeval tv;
 
 	philo = (t_philo*)arg;
-	gettimeofday(&philo->tv, NULL);
+	philo->tv = timestamp();
 	while (1)
 	{
-		gettimeofday(&tv, NULL);
-		if ((tv.tv_usec - philo->tv.tv_usec) > philo->main->die)
-		{
-			philo->status = death;
+		routine_death_check(philo);
+		if (philo->status == death)
 			return (NULL);
-		}
-		else
-			philo->tv = tv;
 		routine_lock(philo);
 		routine_print(philo, eating);
+		usleep(philo->main->eat);
 		routine_unlock(philo);
-		if (philo->lunches == philo->max_lunch || philo->main->end)
+		if (philo->lunches == philo->max_lunch)
 			return (NULL);
 		routine_print(philo, sleeping);
+		usleep(philo->main->sleep);
 		routine_print(philo, thinking);
 	}
 	return (NULL);
@@ -255,15 +275,13 @@ int	thread_monitor_check_finish(t_data *data)
 void thread_monitor(t_data *data)
 {
 	int	index;
-	struct timeval tv;
 
 	index = 0;
 	while (1)
 	{
 		if (data->philos[index]->status == death)
 		{
-			gettimeofday(&tv, NULL);
-			printf("%ld %d died\n", tv.tv_usec, data->philos[index]->num);
+			printf("%lld %d died\n", (timestamp() - data->start), data->philos[index]->num);
 			data->end = 1;
 			return ;
 		}
@@ -290,6 +308,7 @@ int thread_init(t_data *data)
 	memset(data->philos, 0, size);
 	if (data->philos == NULL)
 		return (error(data, "threads malloc error", 1));
+	data->start = timestamp();
 	while (index < data->nphilos)
 	{
 		if (thread_init_philo(data, index))
@@ -318,6 +337,8 @@ int wait_threads(t_data *data)
 			return (error(data, "mutex destroy error\n", 1));
 		index++;
 	}
+	if (pthread_mutex_destroy(&data->endmutex) != 0)
+		return (error(data, "mutex destroy end error\n", 1));
 	return (0);
 }
 
