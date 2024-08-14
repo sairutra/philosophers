@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:15:13 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/14 12:59:03 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/14 16:37:19 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,8 @@ enum e_status
 	eating,
 	thinking,
 	sleeping,
-	death,
-	finished
+	finished,
+	death
 }	;
 
 typedef struct s_data t_data;
@@ -42,13 +42,14 @@ typedef struct s_philo
 	int	max_lunch;
 	int	num;
 	int status;
-	struct timeval tv;
+	long long tv;
 }	t_philo;
 
 typedef struct s_data
 {
 	t_philo **philos;
 	pthread_mutex_t *forks;
+	pthread_mutex_t endmutex;
 	int	nphilos;
 	int	nforks;
 	int	end;
@@ -56,6 +57,7 @@ typedef struct s_data
 	int	eat;
 	int	sleep;
 	int	lunches;
+	long long start;
 }	t_data;
 
 #endif
