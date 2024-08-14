@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/13 18:46:20 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/14 13:18:57 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,8 +56,11 @@ void free_all(t_data *data)
 	int	index;
 	
 	index = 0;
-	while (index < data->nforks)
-		free(data->philos[index++]);
+	if (data->philos)
+	{
+		while (index < data->nforks)
+			free(data->philos[index++]);
+	}
 	free(data->philos);
 	free(data->forks);
 }
@@ -79,6 +82,13 @@ int	philos_init_var(t_data *data, int* data_var, char *var, char *err_msg)
 	return (0);
 }
 
+void philos_init_seconds(t_data *data)
+{
+	data->die = data->die * 1000;
+	data->sleep = data->sleep * 1000;
+	data->eat = data->eat * 1000;
+}
+
 int	philos_init(t_data *data, char **argv)
 {
 	memset(data, 0, sizeof(t_data));
@@ -96,46 +106,18 @@ int	philos_init(t_data *data, char **argv)
 		if (philos_init_var(data, &data->lunches, argv[5], "amount of lunches wrong\n"))
 			return (1);
 	}
-	if (data->nphilos >= 200)
+	if (data->nphilos > 200)
 		return (error(data, "too many philos, not more than 200 allowed\n", 1));
-	if (data->die <= 60)
+	if (data->die < 60)
 		return (error(data, "time to die too low, not lower than 60\n", 1));
-	if (data->eat <= 60)
+	if (data->eat < 60)
 		return (error(data, "time to eat too low, not lower than 60\n", 1));
-	if (data->sleep <= 60)
+	if (data->sleep < 60)
 		return (error(data, "time to sleep too low, not lower than 60\n", 1));
+	philos_init_seconds(data);
 	return (0);
 }
 
-void *routine(void *arg)
-{
-	t_philo *philo;
-	struct timeval tv;
-
-	philo = (t_philo*)arg;	
-	gettimeofday(&philo->tv, NULL);
-	while (1)
-	{
-		pthread_mutex_lock(philo->left);
-		pthread_mutex_lock(philo->right);
-		printf("eating\n");
-		philo->lunches++;
-		gettimeofday(&tv, NULL);
-		if ((tv.tv_usec - philo->tv.tv_usec) > philo->die)
-			return (NULL);
-		else
-			philo->tv = tv;
-		usleep(philo->eat);
-		pthread_mutex_unlock(philo->left);
-		pthread_mutex_unlock(philo->right);
-		if (philo->lunches == philo->max_lunch)
-			return (NULL);
-		printf("sleeping\n");
-		usleep(philo->sleep);
-		printf("thinking\n");
-	}
-	return (NULL);
-}
 
 
 int	mutex_init(t_data *data)
@@ -158,17 +140,85 @@ int	mutex_init(t_data *data)
 	return (0);
 }
 
+void routine_print(t_philo *philo, int status)
+{
+	struct timeval tv;
+
+	philo->status = status;
+	gettimeofday(&tv, NULL);
+	if (status == eating && !philo->main->end)
+	{
+		printf("%ld %d is eating\n", tv.tv_usec, philo->num);
+		usleep(philo->main->eat);
+		philo->lunches++;
+		if (philo->lunches == philo->max_lunch)
+			philo->status = finished;
+	}
+	if (status == thinking && !philo->main->end)
+		printf("%ld %d is thinking\n", tv.tv_usec, philo->num);
+	if (status == sleeping && !philo->main->end)
+	{
+		printf("%ld %d is sleeping\n", tv.tv_usec, philo->num);
+		usleep(philo->main->sleep);
+	}
+}
+
+void routine_lock(t_philo *philo)
+{
+	struct timeval tv;
+
+	pthread_mutex_lock(philo->left);
+	gettimeofday(&tv, NULL);
+	printf("%ld %d has taken a fork\n", tv.tv_usec, philo->num);
+	pthread_mutex_lock(philo->right);
+	gettimeofday(&tv, NULL);
+	printf("%ld %d has taken a fork\n", tv.tv_usec, philo->num);
+}
+
+void routine_unlock(t_philo *philo)
+{
+	pthread_mutex_unlock(philo->left);
+	pthread_mutex_unlock(philo->right);
+}
+
+void *routine(void *arg)
+{
+	t_philo *philo;
+	struct timeval tv;
+
+	philo = (t_philo*)arg;
+	gettimeofday(&philo->tv, NULL);
+	while (1)
+	{
+		gettimeofday(&tv, NULL);
+		if ((tv.tv_usec - philo->tv.tv_usec) > philo->main->die)
+		{
+			philo->status = death;
+			return (NULL);
+		}
+		else
+			philo->tv = tv;
+		routine_lock(philo);
+		routine_print(philo, eating);
+		routine_unlock(philo);
+		if (philo->lunches == philo->max_lunch || philo->main->end)
+			return (NULL);
+		routine_print(philo, sleeping);
+		routine_print(philo, thinking);
+	}
+	return (NULL);
+}
+
 int	thread_init_philo(t_data *data, int index)
 {
 	t_philo *philo;
+
 	philo = malloc(sizeof(t_philo));
 	memset(philo, 0, sizeof(t_philo));
 	if (philo == NULL)
 		return (error(data, "threads malloc error", 1));
-
-	philo->die = data->die;
-	philo->eat = data->eat;
-	philo->sleep = data->sleep;
+	philo->main = data;
+	philo->num = index + 1;
 	if (data->lunches > 0)
 		philo->max_lunch = data->lunches;
 	if (index == 0)
@@ -187,6 +237,48 @@ int	thread_init_philo(t_data *data, int index)
 	return (0);
 }
 
+int	thread_monitor_check_finish(t_data *data)
+{
+	int	index;
+
+	index = 0;
+	while (index < data->nphilos)
+	{
+		if (data->philos[index]->status != finished)
+			return (0);
+		index++;
+	}
+	return (1);
+}
+
+
+void thread_monitor(t_data *data)
+{
+	int	index;
+	struct timeval tv;
+
+	index = 0;
+	while (1)
+	{
+		if (data->philos[index]->status == death)
+		{
+			gettimeofday(&tv, NULL);
+			printf("%ld %d died\n", tv.tv_usec, data->philos[index]->num);
+			data->end = 1;
+			return ;
+		}
+		if (data->philos[index]->status == finished)
+		{
+			if (thread_monitor_check_finish(data))
+				return ;
+		}
+		index++;
+		if (index == data->nphilos)
+			index = 0;
+	}
+}
+
+
 int thread_init(t_data *data)
 {
 	int	index;
@@ -204,6 +296,7 @@ int thread_init(t_data *data)
 			return (1);
 		index++;
 	}
+	thread_monitor(data);
 	return (0);
 }
 
