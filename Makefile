@@ -47,13 +47,11 @@ fclean: clean
 
 #Link
 $(TARGETDIR)/$(TARGET) : $(OBJECTS)
-	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) 
-
+	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) -g3 -fsanitize=thread
 #Compile
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $^
-
 
 #Non-File Targets
 .PHONY: all re clean fclean

@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 17:31:26 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 18:53:23 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,9 +123,10 @@ int	philos_init_var(t_data *data, int* data_var, char *var, char *err_msg)
 
 void philos_init_seconds(t_data *data)
 {
-	data->die = data->die * 1000;
-	data->sleep = data->sleep * 1000;
-	data->eat = data->eat * 1000;
+	(void)data;
+	// data->die = data->die * 1000;
+	// data->sleep = data->sleep * 1000;
+	// data->eat = data->eat * 1000;
 }
 
 int	philos_init(t_data *data, char **argv)
@@ -189,6 +190,16 @@ long long timestamp(void)
 	return (ret);
 }
 
+void philo_usleep(int mili)
+{
+	long long wakeup;
+
+	wakeup = mili + timestamp();
+	while (wakeup > timestamp())
+		usleep(100);
+	return ;
+}
+
 void routine_print(t_philo *philo, int status)
 {
 	pthread_mutex_lock(&philo->main->endmutex);
@@ -214,11 +225,16 @@ void routine_print(t_philo *philo, int status)
 
 int routine_lock(t_philo *philo)
 {
-	if (!philo->main->nphilos % 1)
+	if (philo->main->nphilos % 2)
 	{
 		if (pthread_mutex_lock(philo->left)&& !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
+		if (philo->main->nphilos == 1)
+		{
+			pthread_mutex_unlock(philo->left);
+			return (1);
+		}
 		if(pthread_mutex_lock(philo->right) && !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
@@ -237,7 +253,7 @@ int routine_lock(t_philo *philo)
 
 int routine_unlock(t_philo *philo)
 {
-	if (!philo->main->nphilos % 1)
+	if (!philo->main->nphilos % 2)
 	{
 		if (pthread_mutex_unlock(philo->left))
 			return (1);
@@ -260,6 +276,8 @@ void *routine(void *arg)
 
 	philo = (t_philo*)arg;
 	philo->tv = timestamp();
+	pthread_mutex_lock(&philo->main->endmutex);
+	pthread_mutex_unlock(&philo->main->endmutex);
 	while (1)
 	{
 		if (philo->status == death)
@@ -267,7 +285,7 @@ void *routine(void *arg)
 		if (routine_lock(philo))
 			return (NULL);
 		routine_print(philo, eating);
-		usleep(philo->main->eat);
+		philo_usleep(philo->main->eat);
 		if (routine_unlock(philo))
 			return (NULL);
 		if (philo->lunches == philo->max_lunch)
@@ -275,7 +293,7 @@ void *routine(void *arg)
 		routine_print(philo, sleeping);
 		if (philo->status == death)
 			return (NULL);
-		usleep(philo->main->sleep);
+		philo_usleep(philo->main->sleep);
 		routine_print(philo, thinking);
 	}
 	return (NULL);
@@ -331,12 +349,6 @@ void thread_monitor_terminate_threads(t_data *data, int num, long long stamp)
 	index = 0;
 	data->end = 1;
 	printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
-	if (data->nphilos == 1)
-	{
-		data->nojoin = 1;
-		pthread_detach(data->philos[0]->thread);
-		pthread_mutex_unlock(&data->forks[0]);
-	}
 }
 
 void thread_monitor(t_data *data)
@@ -348,7 +360,7 @@ void thread_monitor(t_data *data)
 	while (1)
 	{
 		stamp = timestamp();
-		if ((stamp - data->philos[index]->tv) > (data->die / 1000) && data->philos[index]->tv)
+		if ((stamp - data->philos[index]->tv) > data->die && data->philos[index]->tv)
 			return (thread_monitor_terminate_threads(data, index, stamp));
 		if (data->philos[index]->status == finished)
 		{
@@ -373,14 +385,15 @@ int thread_init(t_data *data)
 	memset(data->philos, 0, size);
 	if (data->philos == NULL)
 		return (error(data, "threads malloc error", 1));
-	data->start = timestamp();
+	pthread_mutex_lock(&data->endmutex);
 	while (index < data->nphilos)
 	{
 		if (thread_init_philo(data, index))
 			return (1);
-		usleep(1000);
 		index++;
 	}
+	data->start = timestamp();
+	pthread_mutex_unlock(&data->endmutex);
 	thread_monitor(data);
 	return (0);
 }
@@ -390,7 +403,7 @@ int wait_threads(t_data *data)
 	int	index;
 
 	index = 0;
-	while (index < data->nphilos && !data->nojoin)
+	while (index < data->nphilos)
 	{
 		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));
