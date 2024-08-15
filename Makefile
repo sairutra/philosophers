@@ -47,7 +47,8 @@ fclean: clean
 
 #Link
 $(TARGETDIR)/$(TARGET) : $(OBJECTS)
-	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) -g3 -fsanitize=thread
+	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) 
+#-g3 -fsanitize=thread
 #Compile
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)

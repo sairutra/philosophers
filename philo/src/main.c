@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 18:53:23 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 19:12:04 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,13 +190,12 @@ long long timestamp(void)
 	return (ret);
 }
 
-void philo_usleep(int mili)
+void philo_usleep(long long mili)
 {
 	long long wakeup;
-
 	wakeup = mili + timestamp();
 	while (wakeup > timestamp())
-		usleep(100);
+		usleep(10);
 	return ;
 }
 
@@ -225,7 +224,7 @@ void routine_print(t_philo *philo, int status)
 
 int routine_lock(t_philo *philo)
 {
-	if (philo->main->nphilos % 2)
+	if (!philo->num % 2)
 	{
 		if (pthread_mutex_lock(philo->left)&& !philo->main->end)
 			return (1);
@@ -253,7 +252,7 @@ int routine_lock(t_philo *philo)
 
 int routine_unlock(t_philo *philo)
 {
-	if (!philo->main->nphilos % 2)
+	if (!philo->num % 2)
 	{
 		if (pthread_mutex_unlock(philo->left))
 			return (1);
@@ -275,9 +274,9 @@ void *routine(void *arg)
 	t_philo *philo;
 
 	philo = (t_philo*)arg;
-	philo->tv = timestamp();
 	pthread_mutex_lock(&philo->main->endmutex);
 	pthread_mutex_unlock(&philo->main->endmutex);
+	philo->tv = timestamp();
 	while (1)
 	{
 		if (philo->status == death)
@@ -315,6 +314,11 @@ int	thread_init_philo(t_data *data, int index)
 	{
 		philo->left = &data->forks[0];
 		philo->right = &data->forks[data->nforks - 1];
+	}
+	else if (data->nforks == 2)
+	{
+		philo->left = &data->forks[0];
+		philo->right = &data->forks[1];
 	}
 	else
 	{
