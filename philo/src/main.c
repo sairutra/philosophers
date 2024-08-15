@@ -6,13 +6,49 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 15:02:58 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 15:44:40 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <philo.h>
 
-// check for overflow
+int	philo_len(const char *arg)
+{
+	int	index;
+
+	index = 0;
+	while (arg[index] != '\0')
+		index++;
+	return (index);
+}
+
+int	philo_strncmp(const char *s1, const char *s2, size_t n)
+{
+	size_t	index;
+	size_t	s1_len;
+	size_t	s2_len;
+
+	index = 0;
+	s1_len = philo_len(s1);
+	s2_len = philo_len(s2);
+	while (index < n && (index < s1_len || index < s2_len))
+	{
+		if ((unsigned char)s1[index] != (unsigned char)s2[index])
+			return ((unsigned char)s1[index] - (unsigned char)s2[index]);
+		index++;
+	}
+	return (0);
+}
+void print_err(char * msg)
+{
+	int index;
+
+	index = 0;
+	while (msg[index] != '\0')
+		index++;
+	write(2, msg, index);
+}
+
 int	philo_atoi(char *arg)
 {
 	int	result;
@@ -20,6 +56,11 @@ int	philo_atoi(char *arg)
 
 	index = 0;
 	result = 0;
+	if (philo_strncmp(arg, "2147483647", 10) > 0 && philo_len(arg) == 10)
+	{
+		print_err("integer overflow: ");
+		return (-1);
+	}
 	while (arg[index] != 0)
 	{
 		if (!((arg[index] > 47) && (arg[index] < 58)))
@@ -31,15 +72,6 @@ int	philo_atoi(char *arg)
 }
 
 
-void print_err(char * msg)
-{
-	int index;
-
-	index = 0;
-	while (msg[index] != '\0')
-		index++;
-	write(2, msg, index);
-}
 
 void print_out(char * msg)
 {
