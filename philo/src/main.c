@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 14:06:22 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 15:02:58 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -169,6 +169,8 @@ void routine_print(t_philo *philo, int status)
 		printf("%lld %d is thinking\n", (timestamp() - philo->main->start), philo->num);
 	if (status == sleeping && philo->main->end == 0)
 		printf("%lld %d is sleeping\n", (timestamp() - philo->main->start), philo->num);
+	if (philo->main->end == 1)
+		philo->status = death;
 	pthread_mutex_unlock(&philo->main->endmutex);
 }
 
@@ -200,6 +202,8 @@ void *routine(void *arg)
 	philo->tv = timestamp();
 	while (1)
 	{
+		if (philo->status == death)
+			return (NULL);
 		if (routine_lock(philo))
 			return (NULL);
 		routine_print(philo, eating);
@@ -209,6 +213,8 @@ void *routine(void *arg)
 		if (philo->lunches == philo->max_lunch)
 			return (NULL);
 		routine_print(philo, sleeping);
+		if (philo->status == death)
+			return (NULL);
 		usleep(philo->main->sleep);
 		routine_print(philo, thinking);
 	}
@@ -263,16 +269,8 @@ void thread_monitor_terminate_threads(t_data *data, int num, long long stamp)
 	int index;
 
 	index = 0;
-	data->nojoin = 1;
 	data->end = 1;
 	printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
-	usleep(1000);
-	while (index < data->nphilos)
-	{
-		pthread_mutex_unlock(&data->forks[index]);
-		pthread_detach(data->philos[index]->thread);
-		index++;
-	}
 }
 
 void thread_monitor(t_data *data)
@@ -325,7 +323,7 @@ int wait_threads(t_data *data)
 	int	index;
 
 	index = 0;
-	while (index < data->nphilos && !data->nojoin)
+	while (index < data->nphilos)
 	{
 		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));

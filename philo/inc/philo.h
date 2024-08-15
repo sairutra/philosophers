@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:15:13 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 13:43:07 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 15:00:40 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,7 @@ typedef struct s_philo
 	pthread_mutex_t *left;
 	pthread_mutex_t *right;
 	t_data * main;
+	int lock;
 	int	lunches;
 	int	max_lunch;
 	int	num;
@@ -50,7 +51,6 @@ typedef struct s_data
 	t_philo **philos;
 	pthread_mutex_t *forks;
 	pthread_mutex_t endmutex;
-	int nojoin;
 	int	nphilos;
 	int	nforks;
 	int	end;
