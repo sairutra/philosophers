@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 15:44:40 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 15:52:35 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -303,6 +303,12 @@ void thread_monitor_terminate_threads(t_data *data, int num, long long stamp)
 	index = 0;
 	data->end = 1;
 	printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
+	if (data->nphilos == 1)
+	{
+		data->nojoin = 1;
+		pthread_detach(data->philos[0]->thread);
+		pthread_mutex_unlock(&data->forks[0]);
+	}
 }
 
 void thread_monitor(t_data *data)
@@ -355,7 +361,7 @@ int wait_threads(t_data *data)
 	int	index;
 
 	index = 0;
-	while (index < data->nphilos)
+	while (index < data->nphilos && !data->nojoin)
 	{
 		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));
