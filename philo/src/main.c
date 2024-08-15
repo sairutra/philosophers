@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/14 17:01:55 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/15 14:06:22 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -172,37 +172,24 @@ void routine_print(t_philo *philo, int status)
 	pthread_mutex_unlock(&philo->main->endmutex);
 }
 
-// check if only one philo is there
-void routine_lock(t_philo *philo)
+int routine_lock(t_philo *philo)
 {
-	pthread_mutex_lock(philo->left);
+	if(pthread_mutex_lock(philo->left) && !philo->main->end)
+		return (1);
 	routine_print(philo, idle);
-	pthread_mutex_lock(philo->right);
+	if (pthread_mutex_lock(philo->right)&& !philo->main->end)
+		return (1);
 	routine_print(philo, idle);
+	return (0);
 }
 
-void routine_unlock(t_philo *philo)
+int routine_unlock(t_philo *philo)
 {
-	pthread_mutex_unlock(philo->left);
-	pthread_mutex_unlock(philo->right);
-}
-
-void routine_death_check(t_philo *philo)
-{
-	long long time;
-
-	pthread_mutex_lock(&philo->main->endmutex);
-	time = timestamp();
-	if (philo->main->end)
-		philo->status = death;
-	if ((time - philo->tv) > philo->main->die)
-	{
-		philo->main->end = 1;
-		philo->status = death;
-	}
-	else
-		philo->tv = time;
-	pthread_mutex_unlock(&philo->main->endmutex);
+	if (pthread_mutex_unlock(philo->left))
+		return (1);
+	if (pthread_mutex_unlock(philo->right))
+		return (1);
+	return (0);
 }
 
 void *routine(void *arg)
@@ -213,13 +200,12 @@ void *routine(void *arg)
 	philo->tv = timestamp();
 	while (1)
 	{
-		routine_death_check(philo);
-		if (philo->status == death)
+		if (routine_lock(philo))
 			return (NULL);
-		routine_lock(philo);
 		routine_print(philo, eating);
 		usleep(philo->main->eat);
-		routine_unlock(philo);
+		if (routine_unlock(philo))
+			return (NULL);
 		if (philo->lunches == philo->max_lunch)
 			return (NULL);
 		routine_print(philo, sleeping);
@@ -272,19 +258,34 @@ int	thread_monitor_check_finish(t_data *data)
 }
 
 
+void thread_monitor_terminate_threads(t_data *data, int num, long long stamp)
+{
+	int index;
+
+	index = 0;
+	data->nojoin = 1;
+	data->end = 1;
+	printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
+	usleep(1000);
+	while (index < data->nphilos)
+	{
+		pthread_mutex_unlock(&data->forks[index]);
+		pthread_detach(data->philos[index]->thread);
+		index++;
+	}
+}
+
 void thread_monitor(t_data *data)
 {
 	int	index;
+	long long stamp;
 
 	index = 0;
 	while (1)
 	{
-		if (data->philos[index]->status == death)
-		{
-			printf("%lld %d died\n", (timestamp() - data->start), data->philos[index]->num);
-			data->end = 1;
-			return ;
-		}
+		stamp = timestamp();
+		if ((stamp - data->philos[index]->tv) > (data->die / 1000) && data->philos[index]->tv)
+			return (thread_monitor_terminate_threads(data, index, stamp));
 		if (data->philos[index]->status == finished)
 		{
 			if (thread_monitor_check_finish(data))
@@ -324,7 +325,7 @@ int wait_threads(t_data *data)
 	int	index;
 
 	index = 0;
-	while (index < data->nphilos)
+	while (index < data->nphilos && !data->nojoin)
 	{
 		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));
@@ -350,13 +351,13 @@ int main(int argc, char **argv)
 	if (argc < 5 || argc > 6)
 		return (error(&data, "wrong amount of arguments\n", 1));
 	if (philos_init(&data, argv))
-		return (1);
+		return (error(&data, "", 1));
 	if (mutex_init(&data))
-		return (1);
+		return (error(&data, "", 1));
 	if (thread_init(&data))
-		return (1);
+		return (error(&data, "", 1));
 	if (wait_threads(&data))
-		return (1);
+		return (error(&data, "", 1));
 	free_all(&data);
 	return (0);
 }
