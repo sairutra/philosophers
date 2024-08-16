@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/15 19:12:04 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/16 12:39:17 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,13 +121,6 @@ int	philos_init_var(t_data *data, int* data_var, char *var, char *err_msg)
 	return (0);
 }
 
-void philos_init_seconds(t_data *data)
-{
-	(void)data;
-	// data->die = data->die * 1000;
-	// data->sleep = data->sleep * 1000;
-	// data->eat = data->eat * 1000;
-}
 
 int	philos_init(t_data *data, char **argv)
 {
@@ -154,7 +147,6 @@ int	philos_init(t_data *data, char **argv)
 		return (error(data, "time to eat too low, not lower than 60\n", 1));
 	if (data->sleep < 60)
 		return (error(data, "time to sleep too low, not lower than 60\n", 1));
-	philos_init_seconds(data);
 	return (0);
 }
 
@@ -226,14 +218,9 @@ int routine_lock(t_philo *philo)
 {
 	if (!philo->num % 2)
 	{
-		if (pthread_mutex_lock(philo->left)&& !philo->main->end)
+		if (pthread_mutex_lock(philo->left) && !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
-		if (philo->main->nphilos == 1)
-		{
-			pthread_mutex_unlock(philo->left);
-			return (1);
-		}
 		if(pthread_mutex_lock(philo->right) && !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
@@ -243,6 +230,11 @@ int routine_lock(t_philo *philo)
 		if (pthread_mutex_lock(philo->right)&& !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
+		if (philo->main->nphilos == 1)
+		{
+			pthread_mutex_unlock(philo->right);
+			return (1);
+		}
 		if(pthread_mutex_lock(philo->left) && !philo->main->end)
 			return (1);
 		routine_print(philo, idle);
@@ -310,10 +302,10 @@ int	thread_init_philo(t_data *data, int index)
 	philo->num = index + 1;
 	if (data->lunches > 0)
 		philo->max_lunch = data->lunches;
-	if (index == 0)
+	if (index == data->nphilos)
 	{
 		philo->left = &data->forks[0];
-		philo->right = &data->forks[data->nforks - 1];
+		philo->right = &data->forks[index];
 	}
 	else if (data->nforks == 2)
 	{
@@ -322,8 +314,8 @@ int	thread_init_philo(t_data *data, int index)
 	}
 	else
 	{
-		philo->left = &data->forks[index];
-		philo->right = &data->forks[index - 1];
+		philo->left = &data->forks[index + 1];
+		philo->right = &data->forks[index];
 	}
 	data->philos[index] = philo;
 	if (pthread_create(&data->philos[index]->thread, NULL, &routine, (void *)data->philos[index]) != 0)
