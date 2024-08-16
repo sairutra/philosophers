@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:15:13 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/16 19:10:51 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/16 20:50:57 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,6 @@ typedef struct s_philo
 	pthread_mutex_t own;
 	t_data * main;
 	long long start;
-	int lock;
 	int	lunches;
 	int	max_lunch;
 	int	num;

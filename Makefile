@@ -15,7 +15,8 @@ SRCEXT      := c
 OBJEXT      := o
 
 #Flags, Libraries and Includes
-CFLAGS      := -Iphilo/inc -Wall -Werror -Wextra
+CFLAGS      := -Iphilo/inc -Wall -Werror -Wextra -g3 -fsanitize=thread
+
 DEBUG_FLAGS := -g3 -fsanitize=thread
 
 
@@ -47,8 +48,7 @@ fclean: clean
 
 #Link
 $(TARGETDIR)/$(TARGET) : $(OBJECTS)
-	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) 
-#$(DEBUG_FLAGS)
+	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) $(DEBUG_FLAGS)
 #Compile
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)

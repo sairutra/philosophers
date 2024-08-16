@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/16 19:56:00 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/16 21:27:20 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,8 +184,10 @@ long long timestamp(void)
 int routine_death(t_philo *philo)
 {
 	pthread_mutex_lock(&philo->main->endmutex);
+	pthread_mutex_lock(&philo->own);
 	if (philo->main->end == 1)
 		philo->status = death;
+	pthread_mutex_unlock(&philo->own);
 	pthread_mutex_unlock(&philo->main->endmutex);
 	if (philo->status == death)
 		return (1);
@@ -208,25 +210,25 @@ int philo_usleep(t_philo* philo, long long mili)
 void routine_print(t_philo *philo, int status)
 {
 	pthread_mutex_lock(&philo->main->endmutex);
+	pthread_mutex_lock(&philo->own);
 	philo->status = status;
 	if (status == eating && philo->main->end == 0)
 	{
-		pthread_mutex_lock(&philo->own);
 		philo->tv = timestamp();
-		pthread_mutex_unlock(&philo->own);
 		printf("%lld %d is eating\n", (philo->tv - philo->main->start), philo->num);
 		philo->lunches++;
 		if (philo->lunches == philo->max_lunch)
 			philo->status = finished;
 	}
-	if (status == pickfork && philo->main->end == 0)
+	else if (status == pickfork && philo->main->end == 0)
 		printf("%lld %d has taken a fork\n", (timestamp() - philo->main->start), philo->num);
-	if (status == thinking && philo->main->end == 0)
+	else if (status == thinking && philo->main->end == 0)
 		printf("%lld %d is thinking\n", (timestamp() - philo->main->start), philo->num);
-	if (status == sleeping && philo->main->end == 0)
+	else if (status == sleeping && philo->main->end == 0)
 		printf("%lld %d is sleeping\n", (timestamp() - philo->main->start), philo->num);
 	if (philo->main->end == 1)
 		philo->status = death;
+	pthread_mutex_unlock(&philo->own);
 	pthread_mutex_unlock(&philo->main->endmutex);
 }
 
@@ -262,7 +264,9 @@ void *routine(void *arg)
 	philo = (t_philo*)arg;
 	pthread_mutex_lock(&philo->main->endmutex);
 	pthread_mutex_unlock(&philo->main->endmutex);
+	pthread_mutex_lock(&philo->own);
 	philo->tv = timestamp();
+	pthread_mutex_unlock(&philo->own);
 	if (philo->num % 2 && philo->main->nphilos != 1)
 		philo_usleep(philo, philo->main->eat / 2);
 	while (1)
@@ -275,7 +279,7 @@ void *routine(void *arg)
 		philo_usleep(philo, philo->main->eat);
 		if (routine_unlock(philo))
 			return (NULL);
-		if (philo->lunches == philo->max_lunch)
+		if (philo->status == finished)
 			return (NULL);
 		routine_print(philo, sleeping);
 		if (philo_usleep(philo, philo->main->sleep))
@@ -295,6 +299,7 @@ int	thread_init_philo(t_data *data, int index)
 		return (error(data, "threads malloc error", 1));
 	philo->main = data;
 	philo->start = philo->main->start;
+
 	philo->num = index + 1;
 	if (data->lunches > 0)
 		philo->max_lunch = data->lunches;
@@ -321,24 +326,16 @@ int	thread_init_philo(t_data *data, int index)
 	return (0);
 }
 
-int	thread_monitor_check_finish(t_data *data)
+int	thread_monitor_check_finish(t_data *data, int index)
 {
-	int	index;
 	int	ret;
 
-	index = 0;
 	ret = 0;
 	pthread_mutex_lock(&data->endmutex);
-	ret = 1;
-	while (index < data->nphilos)
-	{
-		if (data->philos[index]->lunches != data->lunches)
-		{
-			ret = 0;
-			break ;
-		}
-		index++;
-	}
+	pthread_mutex_lock(&data->philos[index]->own);
+	if (data->philos[index]->status == finished)
+		ret = 1;
+	pthread_mutex_unlock(&data->philos[index]->own);
 	pthread_mutex_unlock(&data->endmutex);
 	return (ret);
 }
@@ -373,7 +370,7 @@ void thread_monitor(t_data *data)
 	{
 		if (thread_monitor_terminate_threads(data, index))
 			return ;
-		if (thread_monitor_check_finish(data))
+		if (thread_monitor_check_finish(data, index))
 			return ;
 		index++;
 		if (index == data->nphilos)
