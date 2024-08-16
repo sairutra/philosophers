@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/16 12:39:17 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/16 19:22:09 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -181,14 +181,28 @@ long long timestamp(void)
 	ret = (stamp.tv_sec * 1000) + (stamp.tv_usec / 1000);
 	return (ret);
 }
+int routine_death(t_philo *philo)
+{
+	pthread_mutex_lock(&philo->main->endmutex);
+	if (philo->main->end == 1)
+		philo->status = death;
+	pthread_mutex_unlock(&philo->main->endmutex);
+	if (philo->status == death)
+		return (1);
+	return (0);
+}
 
-void philo_usleep(long long mili)
+int philo_usleep(t_philo* philo, long long mili)
 {
 	long long wakeup;
 	wakeup = mili + timestamp();
 	while (wakeup > timestamp())
-		usleep(10);
-	return ;
+	{
+		usleep(200);
+		if (routine_death(philo))
+			return (1);
+	}
+	return (0);
 }
 
 void routine_print(t_philo *philo, int status)
@@ -197,13 +211,15 @@ void routine_print(t_philo *philo, int status)
 	philo->status = status;
 	if (status == eating && philo->main->end == 0)
 	{
+		pthread_mutex_lock(&philo->own);
 		philo->tv = timestamp();
+		pthread_mutex_unlock(&philo->own);
 		printf("%lld %d is eating\n", (philo->tv - philo->main->start), philo->num);
 		philo->lunches++;
 		if (philo->lunches == philo->max_lunch)
 			philo->status = finished;
 	}
-	if (status == idle && philo->main->end == 0)
+	if (status == pickfork && philo->main->end == 0)
 		printf("%lld %d has taken a fork\n", (timestamp() - philo->main->start), philo->num);
 	if (status == thinking && philo->main->end == 0)
 		printf("%lld %d is thinking\n", (timestamp() - philo->main->start), philo->num);
@@ -216,48 +232,26 @@ void routine_print(t_philo *philo, int status)
 
 int routine_lock(t_philo *philo)
 {
-	if (!philo->num % 2)
+	if (pthread_mutex_lock(philo->right))
+		return (1);
+	routine_print(philo, pickfork);
+	if (philo->main->nphilos == 1)
 	{
-		if (pthread_mutex_lock(philo->left) && !philo->main->end)
-			return (1);
-		routine_print(philo, idle);
-		if(pthread_mutex_lock(philo->right) && !philo->main->end)
-			return (1);
-		routine_print(philo, idle);
+		pthread_mutex_unlock(philo->right);
+		return (1);
 	}
-	else 
-	{
-		if (pthread_mutex_lock(philo->right)&& !philo->main->end)
-			return (1);
-		routine_print(philo, idle);
-		if (philo->main->nphilos == 1)
-		{
-			pthread_mutex_unlock(philo->right);
-			return (1);
-		}
-		if(pthread_mutex_lock(philo->left) && !philo->main->end)
-			return (1);
-		routine_print(philo, idle);
-	}
+	if (pthread_mutex_lock(philo->left))
+		return (1);
+	routine_print(philo, pickfork);
 	return (0);
 }
 
 int routine_unlock(t_philo *philo)
 {
-	if (!philo->num % 2)
-	{
-		if (pthread_mutex_unlock(philo->left))
-			return (1);
-		if (pthread_mutex_unlock(philo->right))
-			return (1);
-	}
-	else 
-	{
-		if (pthread_mutex_unlock(philo->right))
-			return (1);
-		if (pthread_mutex_unlock(philo->left))
-			return (1);
-	}
+	if (pthread_mutex_unlock(philo->right))
+		return (1);
+	if (pthread_mutex_unlock(philo->left))
+		return (1);
 	return (0);
 }
 
@@ -269,6 +263,8 @@ void *routine(void *arg)
 	pthread_mutex_lock(&philo->main->endmutex);
 	pthread_mutex_unlock(&philo->main->endmutex);
 	philo->tv = timestamp();
+	if (philo->num % 2 && philo->main->nphilos != 1)
+		philo_usleep(philo, philo->main->eat / 2);
 	while (1)
 	{
 		if (philo->status == death)
@@ -276,15 +272,14 @@ void *routine(void *arg)
 		if (routine_lock(philo))
 			return (NULL);
 		routine_print(philo, eating);
-		philo_usleep(philo->main->eat);
+		philo_usleep(philo, philo->main->eat);
 		if (routine_unlock(philo))
 			return (NULL);
 		if (philo->lunches == philo->max_lunch)
 			return (NULL);
 		routine_print(philo, sleeping);
-		if (philo->status == death)
+		if (philo_usleep(philo, philo->main->sleep))
 			return (NULL);
-		philo_usleep(philo->main->sleep);
 		routine_print(philo, thinking);
 	}
 	return (NULL);
@@ -299,13 +294,14 @@ int	thread_init_philo(t_data *data, int index)
 	if (philo == NULL)
 		return (error(data, "threads malloc error", 1));
 	philo->main = data;
+	philo->start = philo->main->start;
 	philo->num = index + 1;
 	if (data->lunches > 0)
 		philo->max_lunch = data->lunches;
-	if (index == data->nphilos)
+	if (index == 0)
 	{
 		philo->left = &data->forks[0];
-		philo->right = &data->forks[index];
+		philo->right = &data->forks[data->nphilos - 1];
 	}
 	else if (data->nforks == 2)
 	{
@@ -314,9 +310,11 @@ int	thread_init_philo(t_data *data, int index)
 	}
 	else
 	{
-		philo->left = &data->forks[index + 1];
-		philo->right = &data->forks[index];
+		philo->left = &data->forks[index];
+		philo->right = &data->forks[index - 1];
 	}
+	if (pthread_mutex_init(&philo->own, NULL) != 0)
+		return (error(data, "philo mutex error\n", 1));
 	data->philos[index] = philo;
 	if (pthread_create(&data->philos[index]->thread, NULL, &routine, (void *)data->philos[index]) != 0)
 		return (error(data, "phtread create error\n", 1));
@@ -326,43 +324,62 @@ int	thread_init_philo(t_data *data, int index)
 int	thread_monitor_check_finish(t_data *data)
 {
 	int	index;
+	int	ret;
 
 	index = 0;
+	ret = 0;
+	pthread_mutex_lock(&data->endmutex);
+	ret = 1;
 	while (index < data->nphilos)
 	{
-		if (data->philos[index]->status != finished)
-			return (0);
+		pthread_mutex_lock(&data->philos[index]->own);
+		if (data->philos[index]->lunches != data->lunches)
+		{
+			ret = 0;
+			pthread_mutex_unlock(&data->philos[index]->own);
+			pthread_mutex_unlock(&data->endmutex);
+			return (ret);
+		}
+		pthread_mutex_unlock(&data->philos[index]->own);
 		index++;
 	}
-	return (1);
+	pthread_mutex_unlock(&data->philos[--index]->own);
+	pthread_mutex_unlock(&data->endmutex);
+	return (ret);
 }
 
 
-void thread_monitor_terminate_threads(t_data *data, int num, long long stamp)
+int thread_monitor_terminate_threads(t_data *data, int num)
 {
-	int index;
+	int ret;
+	long long stamp;
 
-	index = 0;
-	data->end = 1;
-	printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
+	ret = 0;
+	pthread_mutex_lock(&data->endmutex);
+	pthread_mutex_lock(&data->philos[num]->own);
+	stamp = timestamp();
+	if ((stamp - data->philos[num]->tv) > data->die && data->philos[num]->tv)
+	{	
+		printf("%lld %d died\n", (stamp - data->start), data->philos[num]->num);
+		data->end = 1;
+		ret = 1;
+	}
+	pthread_mutex_unlock(&data->philos[num]->own);
+	pthread_mutex_unlock(&data->endmutex);
+	return (ret);
 }
 
 void thread_monitor(t_data *data)
 {
 	int	index;
-	long long stamp;
 
 	index = 0;
 	while (1)
 	{
-		stamp = timestamp();
-		if ((stamp - data->philos[index]->tv) > data->die && data->philos[index]->tv)
-			return (thread_monitor_terminate_threads(data, index, stamp));
-		if (data->philos[index]->status == finished)
-		{
-			if (thread_monitor_check_finish(data))
-				return ;
-		}
+		if (thread_monitor_terminate_threads(data, index))
+			return ;
+		// if (thread_monitor_check_finish(data))
+		// 	return ;	
 		index++;
 		if (index == data->nphilos)
 			index = 0;
@@ -382,13 +399,13 @@ int thread_init(t_data *data)
 	if (data->philos == NULL)
 		return (error(data, "threads malloc error", 1));
 	pthread_mutex_lock(&data->endmutex);
+	data->start = timestamp();
 	while (index < data->nphilos)
 	{
 		if (thread_init_philo(data, index))
 			return (1);
 		index++;
 	}
-	data->start = timestamp();
 	pthread_mutex_unlock(&data->endmutex);
 	thread_monitor(data);
 	return (0);
@@ -403,6 +420,13 @@ int wait_threads(t_data *data)
 	{
 		if (pthread_join(data->philos[index]->thread, NULL) != 0)
 			return (error(data, "phtread join error\n", 1));
+		index++;
+	}
+	index = 0;
+	while (index < data->nphilos)
+	{
+		if (pthread_mutex_destroy(&data->philos[index]->own) != 0)
+			return (error(data, "philo mutex destroy error\n", 1));
 		index++;
 	}
 	index = 0;

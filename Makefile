@@ -16,7 +16,7 @@ OBJEXT      := o
 
 #Flags, Libraries and Includes
 CFLAGS      := -Iphilo/inc -Wall -Werror -Wextra
-DEBUG_FLAGS := -fsanitize=address -g
+DEBUG_FLAGS := -g3 -fsanitize=thread
 
 
 #---------------------------------------------------------------------------------
@@ -47,7 +47,8 @@ fclean: clean
 
 #Link
 $(TARGETDIR)/$(TARGET) : $(OBJECTS)
-	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) -g3 -fsanitize=thread
+	$(CC) $(OBJECTS) -o  $(TARGETDIR)/$(TARGET) 
+#$(DEBUG_FLAGS)
 #Compile
 $(OBJDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)
