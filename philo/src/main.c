@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/16 19:22:09 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/16 19:56:00 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -332,18 +332,13 @@ int	thread_monitor_check_finish(t_data *data)
 	ret = 1;
 	while (index < data->nphilos)
 	{
-		pthread_mutex_lock(&data->philos[index]->own);
 		if (data->philos[index]->lunches != data->lunches)
 		{
 			ret = 0;
-			pthread_mutex_unlock(&data->philos[index]->own);
-			pthread_mutex_unlock(&data->endmutex);
-			return (ret);
+			break ;
 		}
-		pthread_mutex_unlock(&data->philos[index]->own);
 		index++;
 	}
-	pthread_mutex_unlock(&data->philos[--index]->own);
 	pthread_mutex_unlock(&data->endmutex);
 	return (ret);
 }
@@ -378,8 +373,8 @@ void thread_monitor(t_data *data)
 	{
 		if (thread_monitor_terminate_threads(data, index))
 			return ;
-		// if (thread_monitor_check_finish(data))
-		// 	return ;	
+		if (thread_monitor_check_finish(data))
+			return ;
 		index++;
 		if (index == data->nphilos)
 			index = 0;
