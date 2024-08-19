@@ -6,15 +6,15 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 17:27:52 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 18:13:48 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <philo.h>
 
-int main(int argc, char **argv)
+int	main(int argc, char **argv)
 {
-	t_data data;
+	t_data	data;
 
 	if (argc < 5 || argc > 6)
 		return (error(&data, "wrong amount of arguments\n", 1));

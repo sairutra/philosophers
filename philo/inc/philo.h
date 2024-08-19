@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:15:13 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 17:41:30 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 17:51:43 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,6 @@
 # include <stdlib.h>
 # include <sys/time.h>
 
-
 enum e_status
 {
 	pickfork,
@@ -32,38 +31,37 @@ enum e_status
 	death
 };
 
-typedef struct s_data t_data;
+typedef struct s_data	t_data;
 
 typedef struct s_philo
 {
-	pthread_t thread;
-	pthread_mutex_t *left;
-	pthread_mutex_t *right;
-	pthread_mutex_t own;
-	t_data * main;
-	long long start;
-	int	lunches;
-	int	max_lunch;
-	int	num;
-	int status;
-	long long tv;
+	pthread_t		thread;
+	pthread_mutex_t	*left;
+	pthread_mutex_t	*right;
+	pthread_mutex_t	own;
+	t_data			*main;
+	long long		start;
+	int				lunches;
+	int				max_lunch;
+	int				num;
+	int				status;
+	long long		tv;
 }	t_philo;
 
 typedef struct s_data
 {
-	t_philo **philos;
-	pthread_mutex_t *forks;
-	pthread_mutex_t endmutex;
-	int	nphilos;
-	int	nforks;
-	int	end;
-	int	die;
-	int	eat;
-	int	sleep;
-	int	lunches;
-	long long start;
+	t_philo			**philos;
+	pthread_mutex_t	*forks;
+	pthread_mutex_t	endmutex;
+	int				nphilos;
+	int				nforks;
+	int				end;
+	int				die;
+	int				eat;
+	int				sleep;
+	int				lunches;
+	long long		start;
 }	t_data;
-
 
 //UTILS
 /**
@@ -105,7 +103,7 @@ int			philo_atoi(char *arg);
  * @brief this function writes msg to strerr
  * @param msg 
  */
-void		print_err(char * msg);
+void		print_err(char *msg);
 /**
  * @brief this function returns a timestamp in milliseconds in the form 
  * a long long
@@ -120,7 +118,7 @@ long long	timestamp(void);
  * @param t_philo* philo 
  * @param long long mili 
  */
-int			philo_usleep(t_philo* philo, long long mili);
+int			philo_usleep(t_philo	*philo, long long mili);
 
 //INIT
 /**
@@ -195,6 +193,5 @@ int			thread_init(t_data *data);
  * @return void* 
  */
 int			wait_threads(t_data *data);
-
 
 #endif

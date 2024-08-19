@@ -6,22 +6,28 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/19 17:11:36 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 17:11:42 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 18:05:44 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <philo.h>
 
-void *routine(void *arg)
+void	routine_sync(t_philo *philo)
 {
-	t_philo *philo;
-
-	philo = (t_philo*)arg;
 	pthread_mutex_lock(&philo->main->endmutex);
 	pthread_mutex_unlock(&philo->main->endmutex);
 	pthread_mutex_lock(&philo->own);
 	philo->tv = timestamp();
 	pthread_mutex_unlock(&philo->own);
+}
+
+void	*routine(void *arg)
+{
+	t_philo	*philo;
+
+	philo = (t_philo *)arg;
+	routine_sync(philo);
+	philo->tv = timestamp();
 	if (philo->num % 2 && philo->main->nphilos != 1)
 		philo_usleep(philo, philo->main->eat / 2);
 	while (1)
@@ -43,4 +49,3 @@ void *routine(void *arg)
 	}
 	return (NULL);
 }
-

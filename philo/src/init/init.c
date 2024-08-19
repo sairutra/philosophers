@@ -6,13 +6,13 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/19 17:03:06 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 17:27:29 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 18:11:46 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <philo.h>
 
-int	data_init_var(t_data *data, int* data_var, char *var, char *err_msg)
+int	data_init_var(t_data *data, int *data_var, char *var, char *err_msg)
 {
 	*data_var = philo_atoi(var);
 	if (*data_var == -1)
@@ -23,18 +23,18 @@ int	data_init_var(t_data *data, int* data_var, char *var, char *err_msg)
 int	data_init(t_data *data, char **argv)
 {
 	memset(data, 0, sizeof(t_data));
-	if (data_init_var(data, &data->nphilos, argv[1], "number of philos wrong\n"))
+	if (data_init_var(data, &data->nphilos, argv[1], "num of philos wrong\n"))
 		return (1);
 	data->nforks = data->nphilos;
 	if (data_init_var(data, &data->die, argv[2], "time to die wrong\n"))
-			return (1);
+		return (1);
 	if (data_init_var(data, &data->eat, argv[3], "time to eat wrong\n"))
-			return (1);
+		return (1);
 	if (data_init_var(data, &data->sleep, argv[4], "time to sleep wrong\n"))
-			return (1);
+		return (1);
 	if (argv[5])
 	{
-		if (data_init_var(data, &data->lunches, argv[5], "amount of lunches wrong\n"))
+		if (data_init_var(data, &data->lunches, argv[5], "lunches wrong\n"))
 			return (1);
 	}
 	if (data->nphilos > 200)
