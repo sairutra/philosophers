@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/19 17:13:38 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 18:00:07 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 18:14:44 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,8 +67,6 @@ int	wait_thread_destroy_mutexes(t_data *data)
 
 int	wait_threads(t_data *data)
 {
-	int	index;
-
 	if (wait_thread_join(data))
 		return (1);
 	if (wait_thread_destroy_mutexes(data))
