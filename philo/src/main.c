@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 18:13:48 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/19 18:18:39 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,10 @@ int	main(int argc, char **argv)
 	t_data	data;
 
 	if (argc < 5 || argc > 6)
-		return (error(&data, "wrong amount of arguments\n", 1));
+	{
+		print_err("wrong amount of arguments\n");
+		return (1);
+	}
 	if (data_init(&data, argv))
 		return (error(&data, "", 1));
 	if (data.nphilos == 0)
