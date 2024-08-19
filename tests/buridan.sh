@@ -15,6 +15,12 @@ sleep=$5
 even=$(echo "$(($num % 2))")
 lunches=$6
 
+if [ ! -f $1 ]; then
+    echo "executable not found!"
+	exit 1
+fi
+
+
 echo $arg
 echo $num
 echo $die
@@ -48,9 +54,13 @@ fi
 
 
 timeout 10 $arg > $outfile
-echo $?
+exit_code=$(echo $?)
+timeout 10 $valgrind $arg > $mem_outfile
+mem_exit_code=$(echo $?)
+
 #check how to check for all meals finished
 
-
+echo $exit_code
+echo $mem_exit_code
 echo $death
 exit 0
