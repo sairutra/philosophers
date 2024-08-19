@@ -23,7 +23,9 @@ DEBUG_FLAGS := -g3 -fsanitize=thread
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
 #---------------------------------------------------------------------------------
-SOURCES     := ../philo/src/main.c
+SOURCES     := ../philo/src/main.c ../philo/src/init/init.c ../philo/src/routine/monitor.c ../philo/src/routine/routine_utils.c \
+			../philo/src/routine/routine.c ../philo/src/routine/threads.c ../philo/src/routine/wait.c ../philo/src/utils/error.c \
+			../philo/src/utils/lib.c ../philo/src/utils/time.c
 OBJECTS     := $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
 #Default Make
