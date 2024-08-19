@@ -2,9 +2,12 @@
 
 #REFERENCE: https://stackoverflow.com/questions/26465496/rounding-up-float-point-numbers-bash
 #REFERENCE: https://stackoverflow.com/questions/12722095/how-do-i-use-floating-point-arithmetic-in-bash
+#REFERENCE: https://stackoverflow.com/questions/16436000/bash-run-command-for-certain-time
+#REFERENCE: https://stackoverflow.com/questions/10823635/how-to-include-file-in-a-bash-shell-script
+
+. config.sh
 
 arg="$@"
-
 num=$2
 die=$3
 eat=$4
@@ -43,8 +46,10 @@ if [[ $num == 1 ]]; then
 death=true
 fi
 
+
+timeout 10 $arg > $outfile
+echo $?
 #check how to check for all meals finished
-#check ho
 
 
 echo $death
