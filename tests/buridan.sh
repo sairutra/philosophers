@@ -4,6 +4,7 @@
 #REFERENCE: https://stackoverflow.com/questions/12722095/how-do-i-use-floating-point-arithmetic-in-bash
 #REFERENCE: https://stackoverflow.com/questions/16436000/bash-run-command-for-certain-time
 #REFERENCE: https://stackoverflow.com/questions/10823635/how-to-include-file-in-a-bash-shell-script
+#REFERENCE: https://accu.org/journals/overload/21/114/floyd_1867/
 
 . config.sh
 
@@ -14,6 +15,8 @@ eat=$4
 sleep=$5
 even=$(echo "$(($num % 2))")
 lunches=$6
+
+make -C $philo_dir re
 
 if [ ! -f $1 ]; then
     echo "executable not found!"
@@ -53,14 +56,26 @@ death=true
 fi
 
 
-timeout 10 $arg > $outfile
-exit_code=$(echo $?)
-timeout 10 $valgrind $arg > $mem_outfile
-mem_exit_code=$(echo $?)
+make -C $philo_dir fclean
+mkdir -p $philo_dir/temp
+mv $philo_dir/Makefile $philo_dir/temp/
+cp $makesan $philo_dir
+make -C $philo_dir all
 
-#check how to check for all meals finished
+timeout 10 $arg &> $thread_log
+thread_exit_code=$(echo $?)
 
+make -C $philo_dir fclean
+rm -rf $philo_dir/$makesan
+mv $philo_dir/temp/Makefile $philo_dir
+rm -rf $philo_dir/temp
+
+# timeout 10 $arg > $outfile
+# exit_code=$(echo $?)
+# timeout 10 $valgrind $arg > /dev/null
+# mem_exit_code=$(echo $?)
 echo $exit_code
 echo $mem_exit_code
+echo $thread_exit_code
 echo $death
 exit 0
