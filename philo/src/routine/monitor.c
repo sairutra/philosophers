@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/19 17:10:31 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 18:06:38 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/20 17:44:26 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,7 @@ void	thread_monitor(t_data *data)
 		if (thread_monitor_check_finish(data, index))
 			return ;
 		index++;
+		usleep(2500);
 		if (index == data->nphilos)
 			index = 0;
 	}
