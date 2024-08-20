@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/13 14:04:28 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 18:18:39 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/20 18:38:16 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,11 @@ int	main(int argc, char **argv)
 	{
 		print_err("wrong amount of arguments\n");
 		return (1);
+	}
+	if (argv[5])
+	{
+		if (philo_atoi(argv[5]) == 0)
+			return (error(NULL, "there cannot be 0 meals\n", 1));
 	}
 	if (data_init(&data, argv))
 		return (error(&data, "", 1));

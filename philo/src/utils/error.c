@@ -6,7 +6,7 @@
 /*   By: spenning <spenning@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/19 16:58:45 by spenning      #+#    #+#                 */
-/*   Updated: 2024/08/19 18:13:37 by spenning      ########   odam.nl         */
+/*   Updated: 2024/08/20 18:37:38 by spenning      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,8 @@ void	free_all(t_data *data)
 int	error(t_data *data, char *msg, int exitcode)
 {
 	print_err(msg);
-	free_all(data);
+	if (data)
+		free_all(data);
 	return (exitcode);
 }
 
